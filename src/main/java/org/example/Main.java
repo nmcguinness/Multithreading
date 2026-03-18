@@ -16,5 +16,7 @@ public class Main {
         Thread t2 = new Thread(new CharThread(65, 92, 250));
         t2.start();
 
+        System.out.println("done");
+
     }
 }
