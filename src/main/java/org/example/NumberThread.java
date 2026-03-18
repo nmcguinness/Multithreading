@@ -4,7 +4,7 @@ package org.example;
 public class NumberThread implements Runnable {
     private int min, max, sleepMS;
 
-    public NumberThread(int sleepMS, int max, int min)
+    public NumberThread(int min, int max, int sleepMS)
             throws IllegalArgumentException
     {
 
