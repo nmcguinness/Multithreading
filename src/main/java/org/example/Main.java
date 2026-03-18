@@ -4,35 +4,63 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Predicate;
+import java.util.concurrent.TimeUnit;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-public class Main {
+/**
+ * Demonstrates several ways to create, start, and wait for threads in Java.
+ */
+public class Main
+{
+    /**
+     * Entry point for the program.
+     *
+     * @param args Command-line arguments (unused).
+     * @throws InterruptedException Thrown if the main thread is interrupted while waiting.
+     */
+    public static void main(String[] args) throws InterruptedException
+    {
+        Main demo = new Main();
 
+        // Run whichever demo you want to show in class.
+        demo.demoUsingExecutorService();
+        // demo.demoUsingThreadListAndJoin();
+        // demo.demoUsingDirectThreadReferences();
+    }
 
-
-
-
-
-    static void main(/*String[] args*/)  {
-        //how do we make the multi-threaded server respond faster to new clients?
-        //create a pool of threads that we can re-user over time
+    /**
+     * Demonstrates using an {@link ExecutorService} to manage worker threads.
+     *
+     * This is usually the preferred approach because the thread pool handles
+     * thread creation and reuse for us. We submit {@link Runnable} tasks
+     * directly to the pool and then wait for all work to finish.
+     */
+    public void demoUsingExecutorService()
+    {
+        // Create a cached thread pool.
+        // This can create new threads as needed and reuse old ones when possible.
         ExecutorService pool = Executors.newCachedThreadPool();
 
-        //notice ppol wraps the runnable in Thread AND it calls Thread.start()
-        pool.submit(new NumberThread(1,100, 50));
-        pool.submit(new Thread(new CharThread(65,92, 10)));
-        pool.submit(new Thread(new NumberThread(1000,1200, 25)));
+        // Submit Runnable tasks directly.
+        // The pool handles wrapping them in threads and starting them.
+        pool.submit(new NumberThread(1, 100, 50));
+        pool.submit(new CharThread(65, 92, 10));
+        pool.submit(new NumberThread(1000, 1200, 25));
 
-        //paste in copied code here!
+        // Stop accepting new tasks.
         pool.shutdown();
-        try {
-            if (!pool.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+
+        try
+        {
+            // Wait for existing tasks to finish.
+            if (!pool.awaitTermination(5, TimeUnit.SECONDS))
+            {
+                // Force shutdown if tasks take too long.
                 pool.shutdownNow();
             }
         }
-        catch (InterruptedException e) {
+        catch (InterruptedException e)
+        {
+            // If interrupted while waiting, force shutdown and restore interrupt status.
             pool.shutdownNow();
             Thread.currentThread().interrupt();
         }
@@ -40,55 +68,77 @@ public class Main {
         System.out.println("All threads finished!");
     }
 
+    /**
+     * Demonstrates storing {@link Thread} objects in a list so they can all be started
+     * and later joined.
+     *
+     * This is useful when you want to manage a group of threads manually.
+     *
+     * @throws InterruptedException Thrown if the main thread is interrupted while joining.
+     */
+    public void demoUsingThreadListAndJoin() throws InterruptedException
+    {
+        int initialCapacity = 20;
+        List<Thread> threads = new ArrayList<>(initialCapacity);
 
+        // Create three thread objects and store them in a list.
+        threads.add(new Thread(new NumberThread(1, 100, 50)));
+        threads.add(new Thread(new CharThread(65, 92, 10)));
+        threads.add(new Thread(new NumberThread(1000, 1200, 25)));
 
-    // using lists to wait (i.e. join) for thread completion
-//    static void main(/*String[] args*/) throws InterruptedException {
-//
-//        int intitialCapacity = 20;
-//        List<Thread> threads = new ArrayList<Thread>(intitialCapacity);
-//
-//        //instantiate 3 threads
-//        threads.add(new Thread(new NumberThread(1,100, 50)));
-//        threads.add(new Thread(new CharThread(65,92, 10)));
-//        threads.add(new Thread(new NumberThread(1000,1200, 25)));
-//
-//        //check if threads are daemon (lower priority and terminated on Main.exe termination) or user
-//        for(Thread t : threads)
-//            System.out.println(t.isDaemon());
-//
-//        //start 3 threads
-//        for(Thread t : threads)
-//            t.start();
-//
-//        //wait for 3 threads to complete
-//        for(Thread t : threads)
-//            t.join();
-//
-//        System.out.println("All threads have completed!");
-//    }
+        // Check whether each thread is a daemon thread.
+        // Daemon threads are background threads that do not keep the JVM alive.
+        for (Thread thread : threads)
+        {
+            System.out.println("Is daemon: " + thread.isDaemon());
+        }
 
+        // Start all threads.
+        for (Thread thread : threads)
+        {
+            thread.start();
+        }
 
-    //creating three threads and calling join()
-//    static void main(/*String[] args*/) throws InterruptedException {
-//
-//        //create and start a thread
-//        NumberThread r1 = new NumberThread(25, 50, 1);
-//        Thread t1 = new Thread(r1);
-//        // t1.start();
-//
-//        //create and start another BUT we have no thread reference :(
-//        new Thread(new NumberThread(500, 500, 124)).start();
-//
-//        Thread t2 = new Thread(new CharThread(65, 92, 248));
-//        //t2.start();
-//
-//        // put in the start list (i.e. doesnt guarantee that we run!)
-//        t1.start();  t2.start();
-//
-//        //wait for threads to complete!
-//        t1.join();  t2.join();
-//
-//        System.out.println("Finished!");
-//    }
+        // Wait for all threads to finish.
+        for (Thread thread : threads)
+        {
+            thread.join();
+        }
+
+        System.out.println("All threads have completed!");
+    }
+
+    /**
+     * Demonstrates creating thread references individually and calling {@link Thread#join()}
+     * on the ones we kept references to.
+     *
+     * This example also highlights an important limitation:
+     * if you do not keep a reference to a thread, you cannot later join it.
+     *
+     * @throws InterruptedException Thrown if the main thread is interrupted while joining.
+     */
+    public void demoUsingDirectThreadReferences() throws InterruptedException
+    {
+        // Create a Runnable and wrap it in a Thread.
+        NumberThread numberTaskOne = new NumberThread(25, 50, 1);
+        Thread threadOne = new Thread(numberTaskOne);
+
+        // Create and start another thread immediately,
+        // but do NOT keep a reference to it.
+        // Because we do not store the Thread object, we cannot join it later.
+        new Thread(new NumberThread(500, 500, 124)).start();
+
+        // Create another thread and keep the reference.
+        Thread threadTwo = new Thread(new CharThread(65, 92, 248));
+
+        // Start the threads we have references to.
+        threadOne.start();
+        threadTwo.start();
+
+        // Wait only for the threads we can still reference.
+        threadOne.join();
+        threadTwo.join();
+
+        System.out.println("Finished!");
+    }
 }
