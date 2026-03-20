@@ -2,9 +2,7 @@ package org.example;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * Demonstrates several ways to create, start, and wait for threads in Java.
@@ -25,6 +23,7 @@ public class Main
         demo.demoUsingExecutorService();
         // demo.demoUsingThreadListAndJoin();
         // demo.demoUsingDirectThreadReferences();
+        //demo.demoUsingExecutorServiceUsingFuture()
     }
 
     /**
@@ -66,6 +65,61 @@ public class Main
         }
 
         System.out.println("All threads finished!");
+    }
+
+    /// <summary>
+    /// Demonstrates how to use an <see cref="ExecutorService"/> with <see cref="Future"/> objects
+    /// so the main thread can wait gracefully for all submitted tasks to complete.
+    /// </summary>
+    public void demoUsingExecutorServiceUsingFuture()
+    {
+        // Create a cached thread pool.
+        // It creates new threads when needed and reuses old ones when possible.
+        ExecutorService pool = Executors.newCachedThreadPool();
+
+        // Store each Future returned by submit().
+        // A Future represents the submitted task and allows us to wait for its completion.
+        List<Future<?>> futures = new ArrayList<>();
+
+        // Submit the first number-printing task and store its Future.
+        futures.add(pool.submit(new NumberThread(1, 100, 50)));
+
+        // Submit the character-printing task and store its Future.
+        futures.add(pool.submit(new CharThread(65, 92, 10)));
+
+        // Submit the second number-printing task and store its Future.
+        futures.add(pool.submit(new NumberThread(1000, 1200, 25)));
+
+        // Tell the executor that no more tasks will be submitted.
+        // Already submitted tasks are still allowed to finish.
+        pool.shutdown();
+
+        try
+        {
+            // Wait for each submitted task to complete.
+            // Calling get() blocks until that specific task has finished.
+            for (Future<?> future : futures)
+            {
+                future.get();
+            }
+
+            // If execution reaches here, all tasks completed successfully.
+            System.out.println("All tasks finished!");
+        }
+        catch (InterruptedException e)
+        {
+            // If the current thread is interrupted while waiting,
+            // request immediate shutdown of the executor.
+            pool.shutdownNow();
+
+            // Restore the interrupted status so higher-level code can detect it.
+            Thread.currentThread().interrupt();
+        }
+        catch (ExecutionException e)
+        {
+            // This exception means one of the submitted tasks threw an exception.
+            System.out.println("A task failed: " + e.getCause());
+        }
     }
 
     /**
